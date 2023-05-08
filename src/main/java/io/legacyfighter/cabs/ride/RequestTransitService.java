@@ -51,6 +51,10 @@ public class RequestTransitService {
         return requestForTransitRepository.getOne(requestId).getRequestUUID();
     }
 
+    public Long findRequestId(UUID requestUUID) {
+        return requestForTransitRepository.findByRequestUUID(requestUUID).getId();
+    }
+
     public Tariff findTariff(UUID requestUUID) {
         return requestForTransitRepository.findByRequestUUID(requestUUID).getTariff();
     }

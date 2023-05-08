@@ -1,8 +1,8 @@
 package io.legacyfighter.cabs.integration;
 
 import io.legacyfighter.cabs.common.Fixtures;
+import io.legacyfighter.cabs.driverfleet.DriverDTO;
 import io.legacyfighter.cabs.geolocation.Distance;
-import io.legacyfighter.cabs.driverfleet.Driver;
 import io.legacyfighter.cabs.tracking.DriverTrackingService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,16 +36,16 @@ class DriverTrackingServiceIntegrationTest {
     @Test
     void canCalculateTravelledDistanceFromShortTransit() {
         //given
-        Driver driver = fixtures.aDriver();
+        DriverDTO driver = fixtures.aDriver();
         //and
         itIsNoon();
         //and
-        driverTrackingService.registerPosition(driver.getId(), 53.32055555555556, -1.7297222222222221, NOON);
-        driverTrackingService.registerPosition(driver.getId(), 53.31861111111111, -1.6997222222222223, NOON);
-        driverTrackingService.registerPosition(driver.getId(), 53.32055555555556, -1.7297222222222221, NOON);
+        driverTrackingService.registerPosition(driver.id, 53.32055555555556, -1.7297222222222221, NOON);
+        driverTrackingService.registerPosition(driver.id, 53.31861111111111, -1.6997222222222223, NOON);
+        driverTrackingService.registerPosition(driver.id, 53.32055555555556, -1.7297222222222221, NOON);
 
         //when
-        Distance distance = driverTrackingService.calculateTravelledDistance(driver.getId(), NOON, NOON_FIVE);
+        Distance distance = driverTrackingService.calculateTravelledDistance(driver.id, NOON, NOON_FIVE);
 
         //then
         assertEquals("4.009km", distance.printIn("km"));

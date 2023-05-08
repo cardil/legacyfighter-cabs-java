@@ -1,5 +1,7 @@
 package io.legacyfighter.cabs.geolocation.address;
 
+import java.util.Objects;
+
 public class AddressDTO  {
 
     public AddressDTO() {
@@ -127,4 +129,26 @@ public class AddressDTO  {
         address.setDistrict(this.getDistrict());
         return address;
     }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    AddressDTO that = (AddressDTO) o;
+    return Objects.equals(getCountry(), that.getCountry()) &&
+           Objects.equals(getDistrict(), that.getDistrict()) &&
+           Objects.equals(getCity(), that.getCity()) &&
+           Objects.equals(getStreet(), that.getStreet()) &&
+           Objects.equals(getBuildingNumber(), that.getBuildingNumber()) &&
+           Objects.equals(getAdditionalNumber(), that.getAdditionalNumber()) &&
+           Objects.equals(getPostalCode(), that.getPostalCode()) &&
+           Objects.equals(getName(), that.getName());
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(getCountry(), getDistrict(), getCity(),
+      getStreet(), getBuildingNumber(), getAdditionalNumber(),
+      getPostalCode(), getName());
+  }
 }

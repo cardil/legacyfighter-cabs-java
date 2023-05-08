@@ -7,7 +7,7 @@ public class AppProperties {
 
     private Integer noOfTransitsForClaimAutomaticRefund;
     private Integer automaticRefundForVipThreshold;
-    private Integer minNoOfCarsForEcoClass;
+    private Integer minNoOfCarsForEcoClass = 4;
 
     private Integer milesExpirationInDays = 365;
     private Integer defaultMilesBonus = 10;

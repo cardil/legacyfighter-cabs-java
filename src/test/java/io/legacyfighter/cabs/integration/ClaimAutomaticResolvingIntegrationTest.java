@@ -6,7 +6,7 @@ import io.legacyfighter.cabs.config.AppProperties;
 import io.legacyfighter.cabs.crm.Client;
 import io.legacyfighter.cabs.crm.claims.Claim;
 import io.legacyfighter.cabs.crm.claims.ClaimService;
-import io.legacyfighter.cabs.driverfleet.Driver;
+import io.legacyfighter.cabs.driverfleet.DriverDTO;
 import io.legacyfighter.cabs.geolocation.GeocodingService;
 import io.legacyfighter.cabs.geolocation.address.Address;
 import io.legacyfighter.cabs.loyalty.AwardsService;
@@ -26,7 +26,9 @@ import static io.legacyfighter.cabs.crm.claims.Claim.CompletionMode.MANUAL;
 import static io.legacyfighter.cabs.crm.claims.Status.ESCALATED;
 import static io.legacyfighter.cabs.crm.claims.Status.REFUNDED;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 @SpringBootTest
 class ClaimAutomaticResolvingIntegrationTest {
@@ -59,7 +61,7 @@ class ClaimAutomaticResolvingIntegrationTest {
         //and
         Address pickup = fixtures.anAddress();
         //and
-        Driver driver = fixtures.aNearbyDriver(geocodingService, pickup);
+        DriverDTO driver = fixtures.aNearbyDriver(geocodingService, pickup);
         //and
         Client client = fixtures.aClient(VIP);
         //and
@@ -90,7 +92,7 @@ class ClaimAutomaticResolvingIntegrationTest {
         //and
         Address pickup = fixtures.anAddress();
         //and
-        Driver driver = fixtures.aNearbyDriver(geocodingService, pickup);
+        DriverDTO driver = fixtures.aNearbyDriver(geocodingService, pickup);
         //and
         Transit transit = aTransit(pickup, client, driver, 39);
         //and
@@ -116,7 +118,7 @@ class ClaimAutomaticResolvingIntegrationTest {
         //and
         Address pickup = fixtures.anAddress();
         //and
-        Driver driver = fixtures.aNearbyDriver(geocodingService, pickup);
+        DriverDTO driver = fixtures.aNearbyDriver(geocodingService, pickup);
         //and
         Transit transit = aTransit(pickup, client, driver, 50);
         //and
@@ -129,7 +131,7 @@ class ClaimAutomaticResolvingIntegrationTest {
         //then
         assertEquals(ESCALATED, claim.getStatus());
         assertEquals(MANUAL, claim.getCompletionMode());
-        verify(driverNotificationService).askDriverForDetailsAboutClaim(claim.getClaimNo(), driver.getId());
+        verify(driverNotificationService).askDriverForDetailsAboutClaim(claim.getClaimNo(), driver.id);
         verifyNoInteractions(awardsService);
     }
 
@@ -144,7 +146,7 @@ class ClaimAutomaticResolvingIntegrationTest {
         //and
         Address pickup = fixtures.anAddress();
         //and
-        Driver driver = fixtures.aNearbyDriver(geocodingService, pickup);
+        DriverDTO driver = fixtures.aNearbyDriver(geocodingService, pickup);
 
         //when
         Claim claim1 = claimService.tryToResolveAutomatically(fixtures.createClaim(client, aTransit(pickup, client, driver, 50)).getId());
@@ -186,7 +188,7 @@ class ClaimAutomaticResolvingIntegrationTest {
         //and
         Address pickup = fixtures.anAddress();
         //and
-        Driver driver = fixtures.aNearbyDriver(geocodingService, pickup);
+        DriverDTO driver = fixtures.aNearbyDriver(geocodingService, pickup);
         //and
         Transit transit = aTransit(pickup, client, driver, 39);
         //and
@@ -217,7 +219,7 @@ class ClaimAutomaticResolvingIntegrationTest {
         //and
         Address pickup = fixtures.anAddress();
         //and
-        Driver driver = fixtures.aNearbyDriver(geocodingService, pickup);
+        DriverDTO driver = fixtures.aNearbyDriver(geocodingService, pickup);
         //and
         Claim claim = fixtures.createClaim(client, aTransit(pickup, client, driver, 50));
         //and
@@ -245,7 +247,7 @@ class ClaimAutomaticResolvingIntegrationTest {
         //and
         Address pickup = fixtures.anAddress();
         //and
-        Driver driver = fixtures.aNearbyDriver(geocodingService, pickup);
+        DriverDTO driver = fixtures.aNearbyDriver(geocodingService, pickup);
         //and
         Transit transit = aTransit(pickup, client, driver, 50);
         //and
@@ -259,11 +261,11 @@ class ClaimAutomaticResolvingIntegrationTest {
         //then
         assertEquals(ESCALATED, claim.getStatus());
         assertEquals(MANUAL, claim.getCompletionMode());
-        verify(driverNotificationService).askDriverForDetailsAboutClaim(claim.getClaimNo(), driver.getId());
+        verify(driverNotificationService).askDriverForDetailsAboutClaim(claim.getClaimNo(), driver.id);
         verifyNoInteractions(awardsService);
     }
 
-    Transit aTransit(Address pickup, Client client, Driver driver, int price) {
+    Transit aTransit(Address pickup, Client client, DriverDTO driver, int price) {
         return fixtures.aRide(price, client, driver, pickup, fixtures.anAddress());
     }
 

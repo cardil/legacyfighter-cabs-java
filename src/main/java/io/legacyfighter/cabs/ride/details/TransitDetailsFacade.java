@@ -8,6 +8,8 @@ import io.legacyfighter.cabs.geolocation.Distance;
 import io.legacyfighter.cabs.geolocation.address.Address;
 import io.legacyfighter.cabs.money.Money;
 import io.legacyfighter.cabs.pricing.Tariff;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +20,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class TransitDetailsFacade {
+
+    private static final Logger log = LoggerFactory.getLogger(TransitDetailsFacade.class);
 
     private final TransitDetailsRepository transitDetailsRepository;
 
@@ -63,9 +67,16 @@ public class TransitDetailsFacade {
     }
 
     @Transactional
-    public void transitCompleted(UUID requestId, Instant when, Money price, Money driverFee) {
+    public void transitCompleted(UUID requestId, Instant when, Money price) {
         TransitDetails details = load(requestId);
-        details.completedAt(when, price, driverFee);
+        details.completedAt(when, price);
+    }
+
+    @Transactional
+    public void driverFeeCalculated(UUID requestId, Money fee) {
+        log.info("Driver fee calculated for transit {}: {}", requestId, fee);
+        TransitDetails details = load(requestId);
+        details.updateDriversFee(fee);
     }
 
     public List<TransitDetailsDTO> findByClient(Long clientId) {

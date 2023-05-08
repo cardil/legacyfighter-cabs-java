@@ -7,6 +7,7 @@ import io.legacyfighter.cabs.common.EventsPublisher;
 import io.legacyfighter.cabs.crm.Client;
 import io.legacyfighter.cabs.crm.ClientRepository;
 import io.legacyfighter.cabs.driverfleet.DriverDTO;
+import io.legacyfighter.cabs.driverfleet.DriverFee;
 import io.legacyfighter.cabs.driverfleet.DriverFeeService;
 import io.legacyfighter.cabs.driverfleet.DriverService;
 import io.legacyfighter.cabs.geolocation.Distance;
@@ -20,11 +21,13 @@ import io.legacyfighter.cabs.ride.details.TransitDetailsDTO;
 import io.legacyfighter.cabs.ride.details.TransitDetailsFacade;
 import io.legacyfighter.cabs.ride.events.TransitCompleted;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -32,6 +35,9 @@ import java.util.UUID;
 // 20.01.22 - It's a bit better now.
 @Service
 public class RideService {
+
+    @Autowired
+    private RideService self;
 
     @Autowired
     private RequestTransitService requestTransitService;
@@ -192,11 +198,7 @@ public class RideService {
     }
 
     @Transactional
-    public void startTransit(Long driverId, UUID requestUUID) {
-        if (!driverService.exists(driverId)) {
-            throw new IllegalArgumentException("Driver does not exist, id = " + driverId);
-        }
-
+    public void startTransit(UUID requestUUID) {
         if (!demandService.existsFor(requestUUID)) {
             throw new IllegalArgumentException("Transit does not exist, id = " + requestUUID);
         }
@@ -216,29 +218,33 @@ public class RideService {
         driverAssignmentFacade.rejectTransit(requestUUID, driverId);
     }
 
-    @Transactional
-    public void completeTransit(Long driverId, UUID requestUUID, AddressDTO destinationAddress) {
-        completeTransit(driverId, requestUUID, destinationAddress.toAddressEntity());
-    }
-
-    @Transactional
-    public void completeTransit(Long driverId, UUID requestUUID, Address destinationAddress) {
-        destinationAddress = addressRepository.save(destinationAddress);
+    public void completeTransit(UUID requestUUID, AddressDTO destinationAddress) {
         TransitDetailsDTO transitDetails = transitDetailsFacade.find(requestUUID);
-        if (!driverService.exists(driverId)) {
-            throw new IllegalArgumentException("Driver does not exist, id = " + driverId);
+        if (!destinationAddress.equals(transitDetails.to)) {
+            self.changeTransitAddressTo(requestUUID, destinationAddress);
         }
+        Long driverId = transitDetails.driverId;
         Address from = addressRepository.getByHash(transitDetails.from.getHash());
         Address to = addressRepository.getByHash(destinationAddress.getHash());
         Money finalPrice = completeTransitService.completeTransit(driverId, requestUUID, from, to);
-        Money driverFee = driverFeeService.calculateDriverFee(finalPrice, driverId);
         driverService.markNotOccupied(driverId);
-        transitDetailsFacade.transitCompleted(requestUUID, Instant.now(clock), finalPrice, driverFee);
+        transitDetailsFacade.transitCompleted(requestUUID, Instant.now(clock), finalPrice);
         awardsService.registerMiles(transitDetails.client.getId(), transitDetails.transitId);
-        invoiceGenerator.generate(finalPrice.toInt(), transitDetails.client.getName() + " " + transitDetails.client.getLastName());
+        invoiceGenerator.generate(finalPrice.toInt(),
+            transitDetails.client.getName() + " " + transitDetails.client.getLastName());
+        driverFeeService.calculateDriverFee(requestUUID, finalPrice, driverId);
         eventsPublisher.publish(new TransitCompleted(
-                transitDetails.client.getId(), transitDetails.transitId, transitDetails.from.getHash(), destinationAddress.getHash(), transitDetails.started, Instant.now(clock), Instant.now(clock))
-        );
+            transitDetails.client.getId(), transitDetails.transitId, transitDetails.from.getHash(),
+            destinationAddress.getHash(), transitDetails.started,
+            Instant.now(clock), Instant.now(clock)
+        ));
+    }
+
+    @EventListener
+    public void driverFeeCalculated(DriverFee driverFee) {
+        Objects.requireNonNull(driverFee.ctx.getSubject());
+        UUID id = UUID.fromString(driverFee.ctx.getSubject());
+        transitDetailsFacade.driverFeeCalculated(id, driverFee.data.fee);
     }
 
     @Transactional
@@ -253,7 +259,7 @@ public class RideService {
 
     public TransitDTO loadTransit(Long requestId) {
         UUID requestUUID = getRequestUUID(requestId);
-        return loadTransit(requestUUID);
+        return self.loadTransit(requestUUID);
     }
 
     public UUID getRequestUUID(Long requestId) {

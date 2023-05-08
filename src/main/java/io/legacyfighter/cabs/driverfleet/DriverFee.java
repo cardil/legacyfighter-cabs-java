@@ -1,85 +1,64 @@
 package io.legacyfighter.cabs.driverfleet;
 
-import io.legacyfighter.cabs.common.BaseEntity;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.cloudevents.CloudEvent;
+import io.cloudevents.CloudEventContext;
+import io.legacyfighter.cabs.common.Event;
+import io.legacyfighter.cabs.common.cloudevents.From;
 import io.legacyfighter.cabs.money.Money;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
-import javax.persistence.*;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.util.Objects;
 
-@Entity
-public class DriverFee extends BaseEntity {
+public class DriverFee implements Event {
+  public final Data data;
+  public final CloudEventContext ctx;
 
-    public enum FeeType {
-        FLAT, PERCENTAGE
+  DriverFee(Data data, CloudEventContext ctx) {
+    this.data = data;
+    this.ctx = ctx;
+  }
+
+  public static class Data {
+    public final Long driverId;
+    public final Money fee;
+
+    @JsonCreator
+    Data(@JsonProperty("driver-id") Long driverId, @JsonProperty Money fee) {
+      this.driverId = driverId;
+      this.fee = fee;
     }
+  }
 
-    public DriverFee() {
+  @Service
+  static class Converter implements From<DriverFee> {
 
-    }
+    private final ObjectMapper objectMapper;
 
-    public DriverFee(FeeType feeType, Driver driver, Integer amount, Integer min) {
-        this.feeType = feeType;
-        this.driver = driver;
-        this.amount = amount;
-        this.min = new Money(min);
-    }
-
-    @Column(nullable = false)
-    private FeeType feeType;
-
-    @OneToOne
-    private Driver driver;
-
-    @Column(nullable = false)
-    private Integer amount;
-
-    @Embedded
-    @AttributeOverrides({
-            @AttributeOverride(name="value", column=@Column(name="min")),
-    })
-    private Money min;
-
-    public FeeType getFeeType() {
-        return feeType;
-    }
-
-    public void setFeeType(FeeType feeType) {
-        this.feeType = feeType;
-    }
-
-    Driver getDriver() {
-        return driver;
-    }
-
-    public void setDriver(Driver driver) {
-        this.driver = driver;
-    }
-
-    public Integer getAmount() {
-        return amount;
-    }
-
-    public void setAmount(Integer amount) {
-        this.amount = amount;
-    }
-
-    public Money getMin() {
-        return min;
-    }
-
-    public void setMin(Money min) {
-        this.min = min;
+    @Autowired
+    Converter(ObjectMapper objectMapper) {
+      this.objectMapper = objectMapper;
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-
-        if (!(o instanceof DriverFee))
-            return false;
-
-        DriverFee other = (DriverFee) o;
-
-        return this.getId() != null &&
-                this.getId().equals(other.getId());
+    public boolean matches(CloudEvent event) {
+      return "cabs.drivers.driver-fee".equals(event.getType());
     }
+
+    @Override
+    public DriverFee fromCloudEvent(CloudEvent event) {
+      Objects.requireNonNull(event.getData());
+      try {
+        Data data = objectMapper.readValue(event.getData().toBytes(), Data.class);
+        return new DriverFee(data, event);
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
+    }
+  }
 }

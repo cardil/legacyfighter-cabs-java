@@ -77,7 +77,7 @@ public class TransitDTO {
                 transitDetails.status,
                 proposedDrivers
                         .stream()
-                        .filter(driver -> driver.getId().equals(assignedDriver))
+                        .filter(dto -> dto.id.equals(assignedDriver))
                         .findFirst()
                         .orElse(null),
                 transitDetails.distance, transitDetails.kmRate,

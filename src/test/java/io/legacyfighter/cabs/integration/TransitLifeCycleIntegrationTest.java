@@ -2,10 +2,10 @@ package io.legacyfighter.cabs.integration;
 
 import io.legacyfighter.cabs.common.AddressMatcher;
 import io.legacyfighter.cabs.common.Fixtures;
-import io.legacyfighter.cabs.geolocation.address.AddressDTO;
-import io.legacyfighter.cabs.ride.TransitDTO;
 import io.legacyfighter.cabs.geolocation.GeocodingService;
+import io.legacyfighter.cabs.geolocation.address.AddressDTO;
 import io.legacyfighter.cabs.ride.RideService;
+import io.legacyfighter.cabs.ride.TransitDTO;
 import io.legacyfighter.cabs.ride.details.Status;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,12 +13,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 
-import java.time.Instant;
-
 import static io.legacyfighter.cabs.carfleet.CarClass.VAN;
-import static io.legacyfighter.cabs.ride.details.Status.*;
+import static io.legacyfighter.cabs.ride.details.Status.CANCELLED;
+import static io.legacyfighter.cabs.ride.details.Status.COMPLETED;
+import static io.legacyfighter.cabs.ride.details.Status.DRAFT;
+import static io.legacyfighter.cabs.ride.details.Status.TRANSIT_TO_PASSENGER;
+import static io.legacyfighter.cabs.ride.details.Status.WAITING_FOR_DRIVER_ASSIGNMENT;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.when;
 
@@ -116,9 +121,9 @@ class TransitLifeCycleIntegrationTest {
         //and
         rideService.acceptTransit(driver, transit.getRequestId());
         //and
-        rideService.startTransit(driver, transit.getRequestId());
+        rideService.startTransit(transit.getRequestId());
         //and
-        rideService.completeTransit(driver, transit.getRequestId(), destination);
+        rideService.completeTransit(transit.getRequestId(), destination);
 
         //expect
         assertThatExceptionOfType(IllegalStateException.class)
@@ -177,13 +182,13 @@ class TransitLifeCycleIntegrationTest {
                 .isThrownBy(() -> rideService.changeTransitAddressFrom(transit.getRequestId(), changedTo));
 
         //and
-        rideService.startTransit(driver, transit.getRequestId());
+        rideService.startTransit(transit.getRequestId());
         //expect
         assertThatExceptionOfType(IllegalStateException.class)
                 .isThrownBy(() -> rideService.changeTransitAddressFrom(transit.getRequestId(), changedTo));
 
         //and
-        rideService.completeTransit(driver, transit.getRequestId(), destination);
+        rideService.completeTransit(transit.getRequestId(), destination);
         //expect
         assertThatExceptionOfType(IllegalStateException.class)
                 .isThrownBy(() -> rideService.changeTransitAddressFrom(transit.getRequestId(), changedTo));
@@ -278,13 +283,13 @@ class TransitLifeCycleIntegrationTest {
         rideService.acceptTransit(driver, transit.getRequestId());
 
         //and
-        rideService.startTransit(driver, transit.getRequestId());
+        rideService.startTransit(transit.getRequestId());
         //expect
         assertThatExceptionOfType(IllegalStateException.class)
                 .isThrownBy(() -> rideService.cancelTransit(transit.getRequestId()));
 
         //and
-        rideService.completeTransit(driver, transit.getRequestId(), destination);
+        rideService.completeTransit(transit.getRequestId(), destination);
         //expect
         assertThatExceptionOfType(IllegalStateException.class)
                 .isThrownBy(() -> rideService.cancelTransit(transit.getRequestId()));
@@ -412,7 +417,7 @@ class TransitLifeCycleIntegrationTest {
         //and
         rideService.acceptTransit(driver, transit.getRequestId());
         //when
-        rideService.startTransit(driver, transit.getRequestId());
+        rideService.startTransit(transit.getRequestId());
 
         //then
         TransitDTO loaded = rideService.loadTransit(transit.getRequestId());
@@ -435,7 +440,7 @@ class TransitLifeCycleIntegrationTest {
 
         //expect
         assertThatExceptionOfType(IllegalStateException.class)
-                .isThrownBy(() -> rideService.startTransit(driver, transit.getRequestId()));
+                .isThrownBy(() -> rideService.startTransit(transit.getRequestId()));
     }
 
     @Test
@@ -455,10 +460,10 @@ class TransitLifeCycleIntegrationTest {
         //and
         rideService.acceptTransit(driver, transit.getRequestId());
         //and
-        rideService.startTransit(driver, transit.getRequestId());
+        rideService.startTransit(transit.getRequestId());
 
         //when
-        rideService.completeTransit(driver, transit.getRequestId(), destination);
+        rideService.completeTransit(transit.getRequestId(), destination);
 
         //then
         TransitDTO loaded = rideService.loadTransit(transit.getRequestId());
@@ -488,7 +493,7 @@ class TransitLifeCycleIntegrationTest {
 
         //expect
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> rideService.completeTransit(driver, transit.getRequestId(), addressTo));
+                .isThrownBy(() -> rideService.completeTransit(transit.getRequestId(), addressTo));
     }
 
     @Test
@@ -528,12 +533,12 @@ class TransitLifeCycleIntegrationTest {
     }
 
     Long aNearbyDriver(AddressDTO from) {
-        return fixtures.aNearbyDriver(geocodingService, from.toAddressEntity(), 1, 1).getId();
+        return fixtures.aNearbyDriver(geocodingService, from.toAddressEntity()).id;
     }
 
     Long aFarAwayDriver(AddressDTO address) {
         when(geocodingService.geocodeAddress(argThat(new AddressMatcher(address)))).thenReturn(new double[]{20000000,100000000});
-        return fixtures.aNearbyDriver("DW MARIO", 1000000000, 1000000000, VAN, Instant.now(), "BRAND").getId();
+        return fixtures.aNearbyDriver(geocodingService, address.toAddressEntity()).id;
     }
 
     TransitDTO requestTransitFromTo(AddressDTO pickupDto, AddressDTO destination) {

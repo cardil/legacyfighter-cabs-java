@@ -59,9 +59,9 @@ public class TransitController {
         return rideService.loadTransit(id);
     }
 
-    @PostMapping("/transits/{id}/start/{driverId}")
-    TransitDTO start(@PathVariable Long id, @PathVariable Long driverId) {
-        rideService.startTransit(driverId, rideService.getRequestUUID(id));
+    @PostMapping("/transits/{id}/start")
+    TransitDTO start(@PathVariable Long id) {
+        rideService.startTransit(rideService.getRequestUUID(id));
         return rideService.loadTransit(id);
     }
 
@@ -71,9 +71,9 @@ public class TransitController {
         return rideService.loadTransit(id);
     }
 
-    @PostMapping("/transits/{id}/complete/{driverId}")
-    TransitDTO complete(@PathVariable Long id, @PathVariable Long driverId, @RequestBody AddressDTO destination) {
-        rideService.completeTransit(driverId, rideService.getRequestUUID(id), destination);
+    @PostMapping("/transits/{id}/complete")
+    TransitDTO complete(@PathVariable Long id, @RequestBody AddressDTO destination) {
+        rideService.completeTransit(rideService.getRequestUUID(id), destination);
         return rideService.loadTransit(id);
     }
 

@@ -4,7 +4,6 @@ package io.legacyfighter.cabs.common;
 import io.legacyfighter.cabs.carfleet.CarClass;
 import io.legacyfighter.cabs.geolocation.Distance;
 import io.legacyfighter.cabs.geolocation.address.Address;
-import io.legacyfighter.cabs.driverfleet.Driver;
 import io.legacyfighter.cabs.crm.Client;
 import io.legacyfighter.cabs.geolocation.address.AddressDTO;
 import io.legacyfighter.cabs.crm.ClientDTO;
@@ -38,13 +37,13 @@ class TransitFixture {
     @Autowired
     StubbedTransitPrice stubbedTransitPrice;
 
-    Transit transitDetails(Driver driver, Integer price, LocalDateTime when, Client client, Address from, Address to) {
+    Transit transitDetails(Long driverId, Integer price, LocalDateTime when, Client client, Address from, Address to) {
         Transit transit = transitRepository.save(new Transit(null, UUID.randomUUID()));
         stubbedTransitPrice.stub(new Money(price));
         transitDetailsFacade.transitRequested(when.toInstant(ZoneOffset.UTC), transit.getRequestUUID(), from, to, Distance.ofKm(20), client, CarClass.VAN, new Money(price), Tariff.ofTime(when));
-        transitDetailsFacade.transitAccepted(transit.getRequestUUID(), driver.getId(), when.toInstant(ZoneOffset.UTC));
+        transitDetailsFacade.transitAccepted(transit.getRequestUUID(), driverId, when.toInstant(ZoneOffset.UTC));
         transitDetailsFacade.transitStarted(transit.getRequestUUID(), transit.getId(), when.toInstant(ZoneOffset.UTC));
-        transitDetailsFacade.transitCompleted(transit.getRequestUUID(), when.toInstant(ZoneOffset.UTC), new Money(price), null);
+        transitDetailsFacade.transitCompleted(transit.getRequestUUID(), when.toInstant(ZoneOffset.UTC), new Money(price));
         return transit;
     }
 

@@ -2,17 +2,14 @@ package io.legacyfighter.cabs.common;
 
 
 import io.legacyfighter.cabs.carfleet.CarClass;
-import io.legacyfighter.cabs.crm.claims.Claim;
-import io.legacyfighter.cabs.driverfleet.Driver;
-import io.legacyfighter.cabs.driverfleet.Driver.Status;
-import io.legacyfighter.cabs.driverfleet.DriverAttributeName;
-import io.legacyfighter.cabs.driverfleet.DriverFee;
-import io.legacyfighter.cabs.geolocation.address.AddressDTO;
-import io.legacyfighter.cabs.ride.TransitDTO;
-import io.legacyfighter.cabs.geolocation.address.Address;
 import io.legacyfighter.cabs.crm.Client;
-import io.legacyfighter.cabs.ride.Transit;
+import io.legacyfighter.cabs.crm.claims.Claim;
+import io.legacyfighter.cabs.driverfleet.DriverDTO;
 import io.legacyfighter.cabs.geolocation.GeocodingService;
+import io.legacyfighter.cabs.geolocation.address.Address;
+import io.legacyfighter.cabs.geolocation.address.AddressDTO;
+import io.legacyfighter.cabs.ride.Transit;
+import io.legacyfighter.cabs.ride.TransitDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -67,59 +64,23 @@ public class Fixtures {
         return clientFixture.aClient(type);
     }
 
-    public Transit transitDetails(Driver driver, Integer price, LocalDateTime when, Client client) {
-        return transitFixture.transitDetails(driver, price, when, client, anAddress(), anAddress());
+    public Transit transitDetails(DriverDTO driver, Integer price, LocalDateTime when, Client client) {
+        return transitFixture.transitDetails(driver.id, price, when, client, anAddress(), anAddress());
     }
 
-    public Transit transitDetails(Driver driver, Integer price, LocalDateTime when) {
-        return transitFixture.transitDetails(driver, price, when, aClient(), anAddress(), anAddress());
+    public Transit transitDetails(DriverDTO driver, Integer price, LocalDateTime when) {
+        return transitFixture.transitDetails(driver.id, price, when, aClient(), anAddress(), anAddress());
     }
 
     public TransitDTO aTransitDTO(AddressDTO from, AddressDTO to) {
         return transitFixture.aTransitDTO(aClient(), from, to);
     }
 
-    public DriverFee driverHasFee(Driver driver, DriverFee.FeeType feeType, int amount, Integer min) {
-        return driverFixture.driverHasFee(driver, feeType, amount, min);
-    }
-
-    public DriverFee driverHasFee(Driver driver, DriverFee.FeeType feeType, int amount) {
-        return driverFixture.driverHasFee(driver, feeType, amount, 0);
-    }
-
-    public Driver aDriver() {
-        return driverFixture.aDriver(Status.ACTIVE, "Janusz", "Kowalsi", "FARME100165AB5EW");
-    }
-
-    public Driver aDriver(Status status, String name, String lastName, String driverLicense) {
-        return driverFixture.aDriver(status, name, lastName, driverLicense);
-    }
-
-    public Driver aNearbyDriver(GeocodingService stubbedGeocodingService, Address pickup) {
-        return driverFixture.aNearbyDriver(stubbedGeocodingService, pickup);
-    }
-
-    public Driver aNearbyDriver(GeocodingService stubbedGeocodingService, Address pickup, double latitude, double longitude) {
-        return driverFixture.aNearbyDriver(stubbedGeocodingService, pickup, latitude, longitude);
-    }
-
-    public Driver aNearbyDriver(String plateNumber, double latitude, double longitude, CarClass carClass, Instant when) {
-        return driverFixture.aNearbyDriver(plateNumber, latitude, longitude, carClass, when, "brand");
-    }
-
-    public Driver aNearbyDriver(String plateNumber, double latitude, double longitude, CarClass carClass, Instant when, String carBrand) {
-        return driverFixture.aNearbyDriver(plateNumber, latitude, longitude, carClass, when, carBrand);
-    }
-
-    public void driverHasAttribute(Driver driver, DriverAttributeName name, String value) {
-        driverFixture.driverHasAttribute(driver, name, value);
-    }
-
-    public Transit aRide(int price, Client client, Driver driver, Address from, Address destination) {
+    public Transit aRide(int price, Client client, DriverDTO driver, Address from, Address destination) {
         return rideFixture.aRide(price, client, driver, from, destination);
     }
 
-    public TransitDTO aRideWithFixedClock(int price, Instant publishedAt, Instant completedAt, Client client, Driver driver, Address from, Address destination, Clock clock) {
+    public TransitDTO aRideWithFixedClock(int price, Instant publishedAt, Instant completedAt, Client client, DriverDTO driver, Address from, Address destination, Clock clock) {
         return rideFixture.aRideWithFixedClock(price, publishedAt, completedAt, client, driver, from, destination, clock);
     }
 
@@ -131,7 +92,7 @@ public class Fixtures {
         range(1, noOfTransits + 1)
                 .forEach(i -> {
                     Address pickup = anAddress();
-                    Driver driver = aNearbyDriver(geocodingService, pickup);
+                    DriverDTO driver = aNearbyDriver(geocodingService, pickup);
                     aRide(10, client, driver, pickup, anAddress());
                 });
     }
@@ -163,4 +124,11 @@ public class Fixtures {
         awardsAccountFixture.activeAwardsAccount(client);
     }
 
+    public DriverDTO aNearbyDriver(GeocodingService geocodingService, Address pickup) {
+        return driverFixture.aDriver();
+    }
+
+    public DriverDTO aDriver() {
+        return driverFixture.aDriver();
+    }
 }

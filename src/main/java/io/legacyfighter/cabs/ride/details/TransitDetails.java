@@ -140,11 +140,18 @@ class TransitDetails extends BaseEntity {
         this.status = Status.WAITING_FOR_DRIVER_ASSIGNMENT;
     }
 
-    void completedAt(Instant when, Money price, Money driverFee) {
+    void completedAt(Instant when, Money price) {
         this.completeAt = when;
         this.price = price;
-        this.driversFee = driverFee;
         this.status = Status.COMPLETED;
+    }
+
+    void updateDriversFee(Money driversFee) {
+        assert Status.COMPLETED.equals(status);
+        assert price != null;
+        assert completeAt != null;
+
+        this.driversFee = driversFee;
     }
 
     void pickupChangedTo(Address newAddress, Distance newDistance) {
