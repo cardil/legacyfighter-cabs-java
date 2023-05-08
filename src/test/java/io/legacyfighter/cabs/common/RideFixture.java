@@ -2,8 +2,7 @@ package io.legacyfighter.cabs.common;
 
 import io.legacyfighter.cabs.carfleet.CarClass;
 import io.legacyfighter.cabs.crm.Client;
-import io.legacyfighter.cabs.driverfleet.Driver;
-import io.legacyfighter.cabs.driverfleet.DriverFee;
+import io.legacyfighter.cabs.driverfleet.DriverDTO;
 import io.legacyfighter.cabs.geolocation.GeocodingService;
 import io.legacyfighter.cabs.geolocation.address.Address;
 import io.legacyfighter.cabs.geolocation.address.AddressDTO;
@@ -41,9 +40,6 @@ public class RideFixture {
     AddressRepository addressRepository;
 
     @Autowired
-    DriverFixture driverFixture;
-
-    @Autowired
     CarTypeFixture carTypeFixture;
 
     @Autowired
@@ -52,7 +48,7 @@ public class RideFixture {
     @Autowired
     DriverSessionService driverSessionService;
 
-    public Transit aRide(int price, Client client, Driver driver, Address from, Address destination) {
+    public Transit aRide(int price, Client client, DriverDTO driver, Address from, Address destination) {
         stubPrice(price);
         from = addressRepository.save(from);
         destination = addressRepository.save(destination);
@@ -60,9 +56,9 @@ public class RideFixture {
         TransitDTO transitView = rideService.createTransit(client.getId(), new AddressDTO(from), new AddressDTO(destination), VAN);
         rideService.publishTransit(transitView.getRequestId());
         rideService.findDriversForTransit(transitView.getRequestId());
-        rideService.acceptTransit(driver.getId(), transitView.getRequestId());
-        rideService.startTransit(driver.getId(), transitView.getRequestId());
-        rideService.completeTransit(driver.getId(), transitView.getRequestId(), destination);
+        rideService.acceptTransit(driver.id, transitView.getRequestId());
+        rideService.startTransit(transitView.getRequestId());
+        rideService.completeTransit(transitView.getRequestId(), new AddressDTO(destination));
         Long transitID = transitDetailsFacade.find(transitView.getRequestId()).transitId;
         return transitRepository.getOne(transitID);
     }
@@ -72,7 +68,7 @@ public class RideFixture {
         stubbedPrice.stub(fakePrice);
     }
 
-    public TransitDTO aRideWithFixedClock(int price, Instant publishedAt, Instant completedAt, Client client, Driver driver, Address from, Address destination, Clock clock) {
+    public TransitDTO aRideWithFixedClock(int price, Instant publishedAt, Instant completedAt, Client client, DriverDTO driver, Address from, Address destination, Clock clock) {
         from = addressRepository.save(from);
         destination = addressRepository.save(destination);
         when(clock.instant()).thenReturn(publishedAt);
@@ -82,24 +78,21 @@ public class RideFixture {
         TransitDTO transit = rideService.createTransit(client.getId(), new AddressDTO(from), new AddressDTO(destination), VAN);
         rideService.publishTransit(transit.getRequestId());
         rideService.findDriversForTransit(transit.getRequestId());
-        rideService.acceptTransit(driver.getId(), transit.getRequestId());
-        rideService.startTransit(driver.getId(), transit.getRequestId());
+        rideService.acceptTransit(driver.id, transit.getRequestId());
+        rideService.startTransit(transit.getRequestId());
         when(clock.instant()).thenReturn(completedAt);
-        rideService.completeTransit(driver.getId(), transit.getRequestId(), destination);
+        rideService.completeTransit(transit.getRequestId(), new AddressDTO(destination));
         return rideService.loadTransit(transit.getRequestId());
     }
 
-    public TransitDTO driverHasDoneSessionAndPicksSomeoneUpInCar(Driver driver, Client client, CarClass carClass, String plateNumber, String carBrand, Instant when,
+    public TransitDTO driverHasDoneSessionAndPicksSomeoneUpInCar(DriverDTO driver, Client client, CarClass carClass, String plateNumber, String carBrand, Instant when,
                                                               GeocodingService geocodingService, Clock clock) {
         when(clock.instant()).thenReturn(when);
         Address from = addressRepository.save(new Address("PL", "MAZ", "WAW", "STREET", 1));
         Address to = addressRepository.save(new Address("PL", "MAZ", "WAW", "STREET", 100));
         when(geocodingService.geocodeAddress(any())).thenReturn(new double[]{1, 1});
-        driverFixture.driverLogsIn(plateNumber, carClass, driver, carBrand);
-        driverFixture.driverIsAtGeoLocalization(plateNumber, 1, 1, carClass, driver, when, carBrand);
-        driverFixture.driverHasFee(driver, DriverFee.FeeType.FLAT, 10);
         TransitDTO transit = aRideWithFixedClock(30, when, when, client, driver, from, to, clock);
-        driverSessionService.logOutCurrentSession(driver.getId());
+        driverSessionService.logOutCurrentSession(driver.id);
         return transit;
     }
 }

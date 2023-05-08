@@ -1,13 +1,12 @@
 package io.legacyfighter.cabs.tracking;
 
 import io.legacyfighter.cabs.carfleet.CarClass;
-import io.legacyfighter.cabs.geolocation.Distance;
-import io.legacyfighter.cabs.geolocation.GeocodingService;
-import io.legacyfighter.cabs.geolocation.address.AddressDTO;
-import io.legacyfighter.cabs.driverfleet.Driver;
 import io.legacyfighter.cabs.driverfleet.DriverDTO;
 import io.legacyfighter.cabs.driverfleet.DriverService;
 import io.legacyfighter.cabs.driverfleet.driverreport.travelleddistance.TravelledDistanceService;
+import io.legacyfighter.cabs.geolocation.Distance;
+import io.legacyfighter.cabs.geolocation.GeocodingService;
+import io.legacyfighter.cabs.geolocation.address.AddressDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +18,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toList;
@@ -48,7 +48,7 @@ public class DriverTrackingService {
     @Transactional
     public DriverPosition registerPosition(Long driverId, double latitude, double longitude, Instant seenAt) {
         DriverDTO driver = driverService.loadDriver(driverId);
-        if (!driver.getStatus().equals(Driver.Status.ACTIVE)) {
+        if (!driver.status.equals(DriverDTO.Status.ACTIVE)) {
             throw new IllegalStateException("Driver is not active, cannot register position, id = " + driverId);
         }
         DriverPosition position = new DriverPosition();
@@ -118,15 +118,17 @@ public class DriverTrackingService {
                 .stream()
                 .filter(dp -> activeDriverIdsInSpecificCar.contains(dp.getDriverId())).collect(toList());
 
+        Predicate<DriverDTO> isOccupied = driverService.preloadOccupied(driversIds);
         Map<Long, DriverDTO> drivers = driverService.loadDrivers(driversIds)
                 .stream()
-                .collect(toMap(DriverDTO::getId, dto -> dto));
+                .filter(isOccupied.negate())
+                .collect(toMap(dto -> dto.id, dto -> dto));
         driversAvgPositions =
                 driversAvgPositions
                         .stream()
                         .filter(dap -> {
                             DriverDTO d = drivers.get(dap.getDriverId());
-                            return d.getStatus().equals(Driver.Status.ACTIVE) && !d.isOccupied();
+                            return d.status.equals(DriverDTO.Status.ACTIVE);
                         })
                         .collect(Collectors.toList());
         return driversAvgPositions;

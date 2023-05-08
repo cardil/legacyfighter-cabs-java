@@ -2,19 +2,17 @@ package io.legacyfighter.cabs.integration;
 
 import io.legacyfighter.cabs.common.Fixtures;
 import io.legacyfighter.cabs.common.TestWithGraphDB;
-import io.legacyfighter.cabs.geolocation.address.Address;
 import io.legacyfighter.cabs.crm.Client;
-import io.legacyfighter.cabs.driverfleet.Driver;
-import io.legacyfighter.cabs.geolocation.GeocodingService;
 import io.legacyfighter.cabs.crm.transitanalyzer.GraphTransitAnalyzer;
 import io.legacyfighter.cabs.crm.transitanalyzer.PopulateGraphService;
+import io.legacyfighter.cabs.driverfleet.DriverDTO;
+import io.legacyfighter.cabs.geolocation.GeocodingService;
+import io.legacyfighter.cabs.geolocation.address.Address;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.mock.mockito.MockBean;
 
 import java.util.List;
-
-import static java.time.Instant.now;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
@@ -61,7 +59,7 @@ class PopulateGraphServiceIntegrationTest extends TestWithGraphDB {
 
     void aTransitFromTo(Address pickup, Address destination, Client client) {
         when(geocodingService.geocodeAddress(destination)).thenReturn(new double[]{1, 1});
-        Driver driver = fixtures.aNearbyDriver(geocodingService, pickup);
+        DriverDTO driver = fixtures.aNearbyDriver(geocodingService, pickup);
         fixtures.aRide(50, client, driver, pickup, destination);
     }
 }

@@ -10,15 +10,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class DriverReportController {
 
-    private final SqlBasedDriverReportCreator driverReportCreator;
-
-    DriverReportController(SqlBasedDriverReportCreator driverReportCreator) {
-        this.driverReportCreator = driverReportCreator;
-    }
-
     @GetMapping("/driverreport/{driverId}")
     @Transactional
     public DriverReport loadReportForDriver(@PathVariable Long driverId, @RequestParam int lastDays) {
-        return driverReportCreator.createReport(driverId, lastDays);
+        throw new UnsupportedOperationException("Not implemented yet");
     }
 }

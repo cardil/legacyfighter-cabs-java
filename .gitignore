@@ -1,5 +1,3 @@
-# Compiled class file
-*.class
 
 # Log file
 *.log
@@ -165,3 +163,5 @@ Temporary Items
 target/
 
 # End of https://www.toptal.com/developers/gitignore/api/macos,intellij
+
+/.func

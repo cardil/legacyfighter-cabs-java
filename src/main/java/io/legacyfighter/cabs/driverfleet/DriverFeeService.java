@@ -1,29 +1,27 @@
 package io.legacyfighter.cabs.driverfleet;
 
+import io.legacyfighter.cabs.common.cloudevents.Publisher;
 import io.legacyfighter.cabs.money.Money;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
 
 @Service
 public class DriverFeeService {
 
+    private final Publisher publisher;
+
     @Autowired
-    private DriverFeeRepository driverFeeRepository;
+    public DriverFeeService(Publisher publisher) {
+        this.publisher = publisher;
+    }
 
-    @Transactional
-    public Money calculateDriverFee(Money transitPrice, Long driverId) {
-        DriverFee driverFee = driverFeeRepository.findByDriverId(driverId);
-        if (driverFee == null) {
-            throw new IllegalArgumentException("driver Fees not defined for driver, driver id = " + driverId);
-        }
-        Money finalFee;
-        if (driverFee.getFeeType().equals(DriverFee.FeeType.FLAT)) {
-            finalFee = transitPrice.subtract(new Money(driverFee.getAmount()));
-        } else {
-            finalFee = transitPrice.percentage(driverFee.getAmount());
-        }
-
-        return new Money(Math.max(finalFee.toInt(), driverFee.getMin() == null ? 0 : driverFee.getMin().toInt()));
+    public void calculateDriverFee(UUID rideId, Money transitPrice, Long driverId) {
+        publisher.publish(new CalculateFee(
+            rideId,
+            driverId,
+            transitPrice.toInt()
+        ));
     }
 }

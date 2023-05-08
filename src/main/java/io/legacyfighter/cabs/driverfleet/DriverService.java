@@ -1,105 +1,45 @@
 package io.legacyfighter.cabs.driverfleet;
 
+import io.legacyfighter.cabs.config.MicroServices;
 import io.legacyfighter.cabs.money.Money;
+import io.legacyfighter.cabs.ride.details.Status;
 import io.legacyfighter.cabs.ride.details.TransitDetailsDTO;
 import io.legacyfighter.cabs.ride.details.TransitDetailsFacade;
-import org.apache.commons.codec.binary.Base64;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
 import java.time.Month;
 import java.time.YearMonth;
 import java.time.ZoneId;
-import java.util.*;
+import java.util.Collection;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import static io.legacyfighter.cabs.driverfleet.DriverLicense.withLicense;
 
 @Service
 public class DriverService {
 
-    @Autowired
-    private DriverRepository driverRepository;
-
-    @Autowired
-    private DriverAttributeRepository driverAttributeRepository;
-
+    public static final String DRIVER_ID = "driver-id";
     @Autowired
     private TransitDetailsFacade transitDetailsFacade;
 
     @Autowired
-    private DriverFeeService driverFeeService;
+    private RestTemplate restTemplate;
 
-    public Driver createDriver(String license, String lastName, String firstName, Driver.Type type, Driver.Status status, String photo) {
-        Driver driver = new Driver();
-        if (status.equals(Driver.Status.ACTIVE)) {
-            driver.setDriverLicense(withLicense(license));
-        } else {
-            driver.setDriverLicense(DriverLicense.withoutValidation(license));
-        }
-        driver.setLastName(lastName);
-        driver.setFirstName(firstName);
-        driver.setStatus(status);
-        driver.setType(type);
-        if (photo != null && !photo.isEmpty()) {
-            if (Base64.isBase64(photo)) {
-                driver.setPhoto(photo);
-            } else {
-                throw new IllegalArgumentException("Illegal photo in base64");
-            }
-        }
-        return driverRepository.save(driver);
-    }
+    @Autowired
+    private MicroServices microServices;
 
-    @Transactional
-    public void changeLicenseNumber(String newLicense, Long driverId) {
-        Driver driver = driverRepository.getOne(driverId);
-        if (driver == null) {
-            throw new IllegalArgumentException("Driver does not exists, id = " + driverId);
-        }
-        driver.setDriverLicense(withLicense(newLicense));
-
-        if (!driver.getStatus().equals(Driver.Status.ACTIVE)) {
-            throw new IllegalStateException("Driver is not active, cannot change license");
-        }
-    }
-
-    @Transactional
-    public void changeDriverStatus(Long driverId, Driver.Status status) {
-        Driver driver = driverRepository.getOne(driverId);
-        if (driver == null) {
-            throw new IllegalArgumentException("Driver does not exists, id = " + driverId);
-        }
-        if (status.equals(Driver.Status.ACTIVE)) {
-            try {
-                driver.setDriverLicense(withLicense(driver.getDriverLicense().asString()));
-            } catch (IllegalArgumentException e) {
-                throw new IllegalStateException(e);
-            }
-        }
-        driver.setStatus(status);
-    }
-
-    public void changePhoto(Long driverId, String photo) {
-        Driver driver = driverRepository.getOne(driverId);
-        if (driver == null) {
-            throw new IllegalArgumentException("Driver does not exists, id = " + driverId);
-        }
-        if (photo != null && !photo.isEmpty()) {
-            if (Base64.isBase64(photo)) {
-                driver.setPhoto(photo);
-            } else {
-                throw new IllegalArgumentException("Illegal photo in base64");
-            }
-        }
-        driver.setPhoto(photo);
-        driverRepository.save(driver);
-    }
+    @Autowired
+    private OccupiedRepository driversOccupied;
 
     public Money calculateDriverMonthlyPayment(Long driverId, int year, int month) {
-        Driver driver = driverRepository.getOne(driverId);
+        DriverDTO driver = loadDriver(driverId);
         if (driver == null) {
             throw new IllegalArgumentException("Driver does not exists, id = " + driverId);
         }
@@ -114,62 +54,59 @@ public class DriverService {
 
         List<TransitDetailsDTO> transitsList = transitDetailsFacade.findByDriver(driverId, from, to);
 
-        Money sum = transitsList.stream()
-                .map(t -> driverFeeService.calculateDriverFee(t.price, driverId)).reduce(Money.ZERO, Money::add);
-
-        return sum;
+        return transitsList.stream()
+                .filter(t -> Status.COMPLETED.equals(t.status))
+                .filter(t -> t.driverFee != null && t.driverFee.toInt() > 0)
+                .map(t -> t.driverFee)
+                .reduce(Money.ZERO, Money::add);
     }
 
     public Map<Month, Money> calculateDriverYearlyPayment(Long driverId, int year) {
-        Map<Month, Money> payments = new HashMap<>();
+        Map<Month, Money> payments = new EnumMap<>(Month.class);
         for (Month m : Month.values()) {
             payments.put(m, calculateDriverMonthlyPayment(driverId, year, m.getValue()));
         }
         return payments;
     }
 
-    @Transactional
     public DriverDTO loadDriver(Long driverId) {
-        Driver driver = driverRepository.getOne(driverId);
+        String url = String.format("%s/{driver-id}", microServices.getDrivers());
+        DriverDTO driver = restTemplate.getForObject(url,
+            DriverDTO.class, Map.of(DRIVER_ID, driverId));
         if (driver == null) {
             throw new IllegalArgumentException("Driver does not exists, id = " + driverId);
         }
-        return new DriverDTO(driver);
+        driver.id = driverId;
+        return driver;
     }
 
     public Set<DriverDTO> loadDrivers(Collection<Long> ids) {
-        return driverRepository.findAllById(ids)
+        return ids
                 .stream()
-                .map(DriverDTO::new)
+                .map(this::loadDriver)
                 .collect(Collectors.toSet());
     }
 
-    public void addAttribute(Long driverId, DriverAttributeName attr, String value) {
-        Driver driver = driverRepository.getOne(driverId);
-        if (driver == null) {
-            throw new IllegalArgumentException("Driver does not exists, id = " + driverId);
-        }
-        if (driver == null) {
-            throw new IllegalArgumentException("Driver does not exists, id = " + driverId);
-        }
-        driverAttributeRepository.save(new DriverAttribute(driver, attr, value));
-
-    }
-
-
     public boolean exists(Long driverId) {
-        return driverRepository.findById(driverId).isPresent();
+        try {
+            return loadDriver(driverId) != null;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
-    @Transactional
     public void markOccupied(Long driverId) {
-        Driver driver = driverRepository.getOne(driverId);
-        driver.setOccupied(true);
+        driversOccupied.saveAndFlush(new Occupied(driverId));
     }
 
-    @Transactional
     public void markNotOccupied(Long driverId) {
-        Driver driver = driverRepository.getOne(driverId);
-        driver.setOccupied(false);
+        driversOccupied.deleteById(driverId);
+    }
+
+    public Predicate<DriverDTO> preloadOccupied(List<Long> driversIds) {
+        List<Occupied> cache = driversOccupied.findAllById(driversIds);
+        return driver -> cache.stream().anyMatch(
+          o -> o.driverId.equals(driver.id)
+        ) || driversOccupied.findById(driver.id).isPresent();
     }
 }

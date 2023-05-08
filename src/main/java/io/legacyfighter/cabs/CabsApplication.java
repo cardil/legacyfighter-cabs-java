@@ -10,6 +10,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 public class CabsApplication {
 
     public static void main(String[] args) {
+        System.setProperty("spring.profiles.default", "dev");
         SpringApplication.run(CabsApplication.class, args);
     }
 }

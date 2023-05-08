@@ -5,7 +5,7 @@ import io.legacyfighter.cabs.common.TestWithGraphDB;
 import io.legacyfighter.cabs.crm.Client;
 import io.legacyfighter.cabs.crm.transitanalyzer.AnalyzedAddressesDTO;
 import io.legacyfighter.cabs.crm.transitanalyzer.TransitAnalyzerController;
-import io.legacyfighter.cabs.driverfleet.Driver;
+import io.legacyfighter.cabs.driverfleet.DriverDTO;
 import io.legacyfighter.cabs.geolocation.GeocodingService;
 import io.legacyfighter.cabs.geolocation.address.Address;
 import io.legacyfighter.cabs.geolocation.address.AddressDTO;
@@ -54,7 +54,6 @@ public class AnalyzeNearbyTransitsIntegrationTest extends TestWithGraphDB {
         Client client = fixtures.aClient();
         //and
         when(clock.instant()).thenReturn(of(2021, 1, 1, 0, 00).toInstant(UTC));
-        Driver driver = fixtures.aNearbyDriver("WA001", 1, 1, VAN, Instant.now());
         //and
         Address address1 = new Address("1_1", "1", "1", "1", 1);
         Address address2 = new Address("1_2", "2", "2", "2", 2);
@@ -96,7 +95,6 @@ public class AnalyzeNearbyTransitsIntegrationTest extends TestWithGraphDB {
         Client client4 = fixtures.aClient();
         //and
         when(clock.instant()).thenReturn(of(2021, 1, 1, 0, 00).toInstant(UTC));
-        Driver driver = fixtures.aNearbyDriver("WA001", 1, 1, VAN, Instant.now());
         //and
         Address address1 = new Address("2_1", "1", "1", "1", 1);
         Address address2 = new Address("2_2", "2", "2", "2", 2);
@@ -134,7 +132,6 @@ public class AnalyzeNearbyTransitsIntegrationTest extends TestWithGraphDB {
         Client client = fixtures.aClient();
         //and
         when(clock.instant()).thenReturn(of(2021, 1, 1, 0, 00).toInstant(UTC));
-        Driver driver = fixtures.aNearbyDriver("WA001", 1, 1, VAN, Instant.now());
         //and
         Address address1 = new Address("3_1", "1", "1", "1", 1);
         Address address2 = new Address("3_2", "2", "2", "2", 2);
@@ -163,7 +160,6 @@ public class AnalyzeNearbyTransitsIntegrationTest extends TestWithGraphDB {
         Client client = fixtures.aClient();
         //and
         when(clock.instant()).thenReturn(of(2021, 1, 1, 0, 00).toInstant(UTC));
-        Driver driver = fixtures.aNearbyDriver("WA001", 1, 1, VAN, Instant.now());
         //and
         Address address1 = new Address("4_1", "1", "1", "1", 1);
         Address address2 = new Address("4_2", "2", "2", "2", 2);
@@ -224,7 +220,7 @@ public class AnalyzeNearbyTransitsIntegrationTest extends TestWithGraphDB {
 
     void aTransitFromTo(Instant publishedAt, Instant completedAt, Client client, Address pickup, Address destination) {
         when(geocodingService.geocodeAddress(destination)).thenReturn(new double[]{1, 1});
-        Driver driver = fixtures.aNearbyDriver(geocodingService, pickup);
+        DriverDTO driver = fixtures.aNearbyDriver(geocodingService, pickup);
         fixtures.aRideWithFixedClock(40, publishedAt, completedAt, client, driver, pickup, destination, clock);
     }
 
