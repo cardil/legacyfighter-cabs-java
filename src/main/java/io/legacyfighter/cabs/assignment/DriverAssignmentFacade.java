@@ -14,7 +14,9 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -183,5 +185,13 @@ public class DriverAssignmentFacade {
         if (assignedDriver != null) {
             driverNotificationService.notifyAboutCancelledTransit(assignedDriver, transitRequestUUID);
         }
+    }
+
+    public Set<UUID> proposedAssignmentsForDriver(Long driverId) {
+        return driverAssignmentRepository.findUnassigned()
+            .stream()
+            .filter(assignment -> assignment.canProposeTo(driverId))
+            .map(DriverAssignment::getRequestUUID)
+            .collect(Collectors.toSet());
     }
 }

@@ -8,6 +8,7 @@ import io.legacyfighter.cabs.carfleet.CarTypeService;
 import io.legacyfighter.cabs.crm.Client;
 import io.legacyfighter.cabs.crm.ClientDTO;
 import io.legacyfighter.cabs.crm.ClientService;
+import io.legacyfighter.cabs.geolocation.GeocodingService;
 import io.legacyfighter.cabs.geolocation.address.AddressDTO;
 import io.legacyfighter.cabs.ride.RequestTransitService;
 import io.legacyfighter.cabs.ride.RideService;
@@ -43,6 +44,8 @@ class DevData {
   @Autowired
   private RequestTransitService requestTransitService;
   @Autowired
+  private GeocodingService geocodingService;
+  @Autowired
   private ObjectMapper objectMapper;
 
   @EventListener
@@ -63,8 +66,9 @@ class DevData {
     long driverId = 1993432552L; // Rob Falc
     driverSessionService.logIn(driverId, "WZ 2133T",
       CarClass.REGULAR, "Toyota Prius");
+    double[] loc = geocodingService.geocodeAddress(pickup.toAddressEntity());
     trackingService.registerPosition(driverId,
-      1f, 1f, Instant.now());
+      loc[0], loc[1], Instant.now());
 
     TransitDTO transit = new TransitDTO();
     transit.setClientDTO(new ClientDTO(client));
@@ -80,8 +84,8 @@ class DevData {
     } else {
       Long id = requestTransitService.findRequestId(transit.getRequestId());
       String payload = objectMapper.writeValueAsString(transit.getTo());
-      log.info("Complete the transit by calling: " +
-               "/transits/{}/complete\n\n{}", id, payload);
+      log.info("Complete the transit ({}) by calling: /transits/{}/complete\n\n{}",
+        transit.getRequestId(), id, payload);
     }
   }
 
